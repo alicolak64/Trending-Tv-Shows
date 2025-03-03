@@ -6,10 +6,11 @@
 //
 
 import UIKit
+import Kingfisher
 
 class TvImage: UIImageView {
     
-    override init (frame:CGRect){
+    override init(frame: CGRect) {
         super.init(frame: frame)
         set()
     }
@@ -18,18 +19,26 @@ class TvImage: UIImageView {
         fatalError("init(coder:) has not been implemented")
     }
     
-    private func set(){
+    private func set() {
         clipsToBounds = true
         translatesAutoresizingMaskIntoConstraints = false
         contentMode = .scaleAspectFill
         backgroundColor = .systemBackground
     }
     
-    func downloadTVImage(_ url:String) { 
-        NetworkManger.shared.downloadImage(from:url) { [weak self] image in
-            guard let self = self else { return }
-            DispatchQueue.main.async { self.image = image }
+    func downloadTVImage(_ url: String) {
+        guard let imageUrl = URL(string: url), !url.isEmpty else {
+            print("Non Valid Url")
+            return
         }
+        
+        self.kf.setImage(
+            with: imageUrl,
+            options: [
+                .transition(.fade(0.3)),
+                .cacheOriginalImage
+            ]
+        )
     }
 
 }
