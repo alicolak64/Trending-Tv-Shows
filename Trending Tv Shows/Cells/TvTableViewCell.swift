@@ -26,10 +26,11 @@ class TvTableViewCell: UITableViewCell {
         super.awakeFromNib()
      }
      
-    func setCell(favorite:Show) {
-        tvImage.downloadTVImage(favorite.backdropPath ?? "No image")
-        tvName.text = favorite.name
+    func setCell(favorite: Show) {
+        tvImage.downloadTVImage(favorite.posterPath ?? "")
+        tvName.text = favorite.unwrappedName
     }
+
     
     private func set() {
         self.contentView.addSubview(tvImage)
@@ -48,4 +49,10 @@ class TvTableViewCell: UITableViewCell {
                 tvName.heightAnchor.constraint(equalToConstant: 40)
             ])
       }
+    
+    override func prepareForReuse() {
+        tvName.text = nil
+        tvImage.image = nil
+        tvImage.kf.cancelDownloadTask()
+    }
 }
