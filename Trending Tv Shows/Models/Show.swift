@@ -52,4 +52,11 @@ extension Show{
         "\(firstAirDate ?? "Unavailable")"
     }
     
+    var posterPath: String? {
+       "https://image.tmdb.org/t/p/w500\(backdropPath ?? "")"
+    }
+    
+    var posterUrl: URL? {
+        URL(string: "https://image.tmdb.org/t/p/w500\(backdropPath ?? "")")
+    }
 }
