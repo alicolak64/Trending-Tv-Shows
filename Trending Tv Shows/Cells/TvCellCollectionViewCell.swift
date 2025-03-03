@@ -8,7 +8,7 @@
 import UIKit
 
 class TvCellCollectionViewCell: UICollectionViewCell {
-  
+    
     static let reuseID = "Tvcell"
     let tvImage = TvImage(frame: .zero)
     let tvName = TitleLabel(textAlignment: .center, fontSize: 20 )
@@ -22,14 +22,16 @@ class TvCellCollectionViewCell: UICollectionViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
-    func setCell(show:Show){
-        if let path = show.backdropPath{tvImage.downloadTVImage(path)}
+    func setCell(show: Show) {
+        tvImage.downloadTVImage(show.posterPath ?? "")
         tvName.text = show.unwrappedName
     }
+
+
     
     private func set() {
-        addSubview(tvImage)
-        addSubview(tvName)
+        contentView.addSubview(tvImage)
+        contentView.addSubview(tvName)
         tvImage.translatesAutoresizingMaskIntoConstraints = false
         tvName.translatesAutoresizingMaskIntoConstraints = false
         let padding : CGFloat = 8
@@ -40,7 +42,16 @@ class TvCellCollectionViewCell: UICollectionViewCell {
             tvImage.heightAnchor.constraint(equalTo: tvImage.widthAnchor),
             tvName.topAnchor.constraint(equalTo: tvImage.bottomAnchor, constant: 12),
             tvName.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
-            tvName.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),])
+            tvName.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
+        ])
         
     }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        tvName.text = nil
+        tvImage.image = nil
+        tvImage.kf.cancelDownloadTask()
+    }
+
 }
