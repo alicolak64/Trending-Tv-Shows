@@ -77,11 +77,7 @@ class Details_ViewController: UIViewController {
     
     
     func configureUIElements(){
-        if let path = show?.backdropPath  {
-            tvImage.downloadTVImage(path)
-        } else {
-            print("No Backdrop path")
-        }
+        tvImage.downloadTVImage(show?.posterPath ?? "")
         titleLabel.text = show?.name
         dateLabel.text = show?.firstAirDate
         scoreLabel.text = show?.voteAverageStr
