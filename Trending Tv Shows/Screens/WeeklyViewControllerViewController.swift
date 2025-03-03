@@ -7,172 +7,127 @@
 
 import UIKit
 
-class WeeklyViewController: UIViewController, UISearchBarDelegate {
-    
-    
-    enum Section {
-        case main
-    }
-    
-    var collectionView :UICollectionView!
-    var shows : [Show] = [] 
-    
-    var dataSource: UICollectionViewDiffableDataSource<Section,Show>!
-    var filteredShows : [Show] = []
+class WeeklyViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UISearchBarDelegate, UISearchResultsUpdating {
+
+    var collectionView: UICollectionView!
+    var shows: [Show] = []
+    var filteredShows: [Show] = []
     var page = 1
     var show_ID = 0
-    var isSearching = true
+    var isSearching = false
     var loadMoreMovies = true
-    
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         configureViewcontroller()
         configureCollectionView()
         configureSearch()
-        getTvshows(page:page)
-        configureDataSource()
-        
+        getTvshows(page: page)
     }
-    
-    func configureViewcontroller(){
+
+    func configureViewcontroller() {
         view.backgroundColor = .systemGray
-        
     }
-    
-    func configureCollectionView(){
-        collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: createThreeColumnFlowLayout())
+
+    func configureCollectionView() {
+        collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: createCompositionalLayout())
         view.addSubview(collectionView)
         collectionView.delegate = self
+        collectionView.dataSource = self
         collectionView.backgroundColor = .white
         collectionView.register(TvCellCollectionViewCell.self, forCellWithReuseIdentifier: TvCellCollectionViewCell.reuseID)
-        self.configureDataSource()
-        
     }
-    
-    
-    func createThreeColumnFlowLayout()->UICollectionViewFlowLayout{
-        let width                       = view.bounds.width
-        let padding: CGFloat            = 12
-        let minimumItemSpacing: CGFloat = 10
-        let availableWidth              = width - (padding * 2) - (minimumItemSpacing * 2)
-        let itemWidth                   = availableWidth / 3
-        let flowLayout                  = UICollectionViewFlowLayout()
-        flowLayout.sectionInset         = UIEdgeInsets(top: padding, left: padding, bottom: padding, right: padding)
-        flowLayout.itemSize             = CGSize(width: itemWidth, height: itemWidth + 40)
-        return flowLayout
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        var activeArray: Show
 
-        if isSearching {
-            activeArray = shows[indexPath.row]
-        } else {
-            activeArray = filteredShows[indexPath.row]
-        }
-        let detailsVC = Details_ViewController(showID:show_ID)
-        detailsVC.showID = activeArray.id ?? 0
-        
-        let navController   = UINavigationController(rootViewController: detailsVC)
-        present(navController, animated: true)
+    func createCompositionalLayout() -> UICollectionViewCompositionalLayout {
+        let itemSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0 / 3.0),
+            heightDimension: .absolute(180)
+        )
+        let item = NSCollectionLayoutItem(layoutSize: itemSize)
+        item.contentInsets = NSDirectionalEdgeInsets(top: 5, leading: 5, bottom: 5, trailing: 5)
+
+        let groupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .absolute(200)
+        )
+        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
+
+        let section = NSCollectionLayoutSection(group: group)
+        section.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10)
+
+        return UICollectionViewCompositionalLayout(section: section)
     }
-    
-    
-    
-    func configureSearch(){
+
+    func configureSearch() {
         let searchController = UISearchController()
         searchController.searchResultsUpdater = self
         searchController.searchBar.delegate = self
-        searchController.searchBar.placeholder = "Seach Tv Shows"
+        searchController.searchBar.placeholder = "Search TV Shows"
         searchController.obscuresBackgroundDuringPresentation = false
         navigationItem.searchController = searchController
     }
-    
-    
-    func getTvshows(page:Int){
+
+    func getTvshows(page: Int) {
         showLoadingView()
-        NetworkManger.shared.get(.showList, showID: nil, page: page, urlString: "") { [weak self] (response: ApiResponse? ) in
+        NetworkManger.shared.get(.showList, showID: nil, page: page, urlString: "") { [weak self] (response: ApiResponse?) in
             self?.dismissLoadingView()
             guard let self = self else { return }
-            guard let shows = response?.shows else {
-             self.alert(message: "Check Internet Connection", title:  ErroMessage.unableToComplete.rawValue)
+            guard let newShows = response?.shows else {
+                self.alert(message: "Check Internet Connection", title: ErroMessage.unableToComplete.rawValue)
                 return
             }
             DispatchQueue.main.async {
                 if page == 1 {
-                    self.shows = shows
-                }else{
-                    self.shows.append(contentsOf: shows)
+                    self.shows = newShows
+                } else {
+                    self.shows.append(contentsOf: newShows)
                 }
-                self.updateData(shows: self.shows)
+                self.collectionView.reloadData()
             }
-            
-        }
-        
-    }
-    
-    func updateUI(_ shows:[Show]){
-        if self.shows.isEmpty{
-            let alert = UIAlertController(title: "Tv Show Doesnt Exist", message: nil,preferredStyle: UIAlertController.Style.alert)
-            alert.addAction(UIAlertAction(title: "OK", style: UIAlertAction.Style.default, handler: nil))
-            self.present(alert, animated: true, completion: nil)
-        }
-        self.updateData(shows: self.shows)
-        
-    }
-    
-    func updateData(shows:[Show]){ //shows follwers
-        var snapshot = NSDiffableDataSourceSnapshot<Section,Show>()
-        snapshot.appendSections([.main])
-        snapshot.appendItems(shows)
-        DispatchQueue.main.async {
-            self.dataSource.apply(snapshot,animatingDifferences: true)
         }
     }
-    
-    func configureDataSource(){
-        dataSource = UICollectionViewDiffableDataSource<Section, Show>(collectionView: collectionView, cellProvider: {
-            (collectionView, indexPath, show) -> UICollectionViewCell? in
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: TvCellCollectionViewCell.reuseID, for: indexPath) as! TvCellCollectionViewCell
-            cell.setCell(show: show)
-            return cell
-        })
-    }
-    
-}
 
-extension WeeklyViewController: UISearchResultsUpdating{
-    
-    func updateSearchResults(for searchController: UISearchController) {
-        if searchController.searchBar.text != ""{
-            isSearching = false
-            filteredShows = shows.filter({$0.unwrappedName.lowercased().contains((searchController.searchBar.text ?? "").lowercased())})
-            updateData(shows: filteredShows)
-        }
-        else {
-            updateData(shows: shows)
-        }
+    // MARK: - UICollectionViewDataSource
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return isSearching ? filteredShows.count : shows.count
     }
-    
+
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: TvCellCollectionViewCell.reuseID, for: indexPath) as! TvCellCollectionViewCell
+        let show = isSearching ? filteredShows[indexPath.row] : shows[indexPath.row]
+        cell.setCell(show: show)
+        return cell
+    }
+
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let selectedShow = isSearching ? filteredShows[indexPath.row] : shows[indexPath.row]
+        let detailsVC = Details_ViewController(showID: selectedShow.id ?? 0)
+        let navController = UINavigationController(rootViewController: detailsVC)
+        present(navController, animated: true)
+    }
+
+    // MARK: - UISearchResultsUpdating
+    func updateSearchResults(for searchController: UISearchController) {
+        let searchText = searchController.searchBar.text ?? ""
+        isSearching = !searchText.isEmpty
+        filteredShows = shows.filter { $0.unwrappedName.lowercased().contains(searchText.lowercased()) }
+        collectionView.reloadData()
+    }
+
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         isSearching = false
-        updateData(shows: filteredShows)
+        collectionView.reloadData()
     }
-}
 
-extension WeeklyViewController:UICollectionViewDelegate{
-    
+    // MARK: - Infinite Scrolling
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         let offsetY = scrollView.contentOffset.y
         let contentHeight = scrollView.contentSize.height
         let height = scrollView.frame.size.height
-        if offsetY > contentHeight-height{
+        if offsetY > contentHeight - height {
             guard loadMoreMovies else { return }
-            page += 1 ///increments ppage number when screen reaches
+            page += 1
             getTvshows(page: page)
         }
     }
 }
-
-
